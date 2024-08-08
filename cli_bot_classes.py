@@ -71,6 +71,7 @@ class Record:
     def __init__(self, name, phones: List[str] = None, birthday: Birthday = None):
         self.name = Name(name)
         self.phones = []
+        self.birthday = None
         if phones is not None:
             for phone in phones:
                 try:
@@ -184,7 +185,13 @@ class AddressBook(UserDict):
             del self.data[name]
 
     def get_upcoming_birthdays(self):
-
+        today = date.today()
+        upcoming_birthdays = []
+        for record in self.data.values():
+            birthday_this_year = date(today.year, record.birthday.value.month, record.birthday.value.day)
+            days_until_birthday = (birthday_this_year - today).days
+            if 0 <= days_until_birthday <= 7:
+                upcoming_birthdays.append((record.name.value, birthday_this_year))
 
     def __str__(self):
         """Return a string representation of the address book."""
