@@ -1,5 +1,5 @@
 from collections import UserDict
-from datetime import date
+from datetime import date, timedelta
 from typing import List
 from normalize_phone import normalize_phone
 
@@ -190,8 +190,14 @@ class AddressBook(UserDict):
         for record in self.data.values():
             birthday_this_year = date(today.year, record.birthday.value.month, record.birthday.value.day)
             days_until_birthday = (birthday_this_year - today).days
+            if birthday_this_year.weekday() == 5:
+                days_until_birthday += 2
+            elif birthday_this_year.weekday() == 6:
+                days_until_birthday += 1
             if 0 <= days_until_birthday <= 7:
-                upcoming_birthdays.append((record.name.value, birthday_this_year))
+                congrats_day = date.today() + timedelta(days=days_until_birthday)
+                upcoming_birthdays.append((record.name.value, birthday_this_year, congrats_day))
+        return f"Upcoming birthdays: {'\n'.join(f'{name} on {birthday}' for name, birthday, congrats_day in upcoming_birthdays)}"
 
     def __str__(self):
         """Return a string representation of the address book."""
