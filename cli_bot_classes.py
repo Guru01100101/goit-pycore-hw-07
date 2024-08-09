@@ -65,6 +65,7 @@ class Record:
     Attributes:
         name (Name): The name of the contact. (required)
         phones (List[Phone]): A list of phone numbers of the contact. (optional)
+        birthday (Birthday): The birthday of the contact. (optional)
 
     """
 

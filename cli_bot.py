@@ -3,35 +3,35 @@ from functools import wraps
 from pathlib import Path
 from typing import List, Dict
 
+from cli_bot_classes import AddressBook, Record
 from normalize_phone import normalize_phone
 
 PHONEBOOK_FILE = "phonebook.json"
 
 
-def load_phonebook(filename=PHONEBOOK_FILE) -> List[Dict[str, str]]:
+def load_phonebook(filename=PHONEBOOK_FILE) -> AddressBook:
     """Function to load the phonebook from the file.
 
     __args__:
-        None
+        Filename: str
     __return__:
-        phonebook: dict
-            The phonebook dictionary
+        AddressBook object
     """
     path = Path(filename)
     try:
         with open(path, "r") as file:
-            phonebook = json.load(file)
+            return AddressBook(json.load(file))
     except FileNotFoundError:
-        phonebook = []
-    return phonebook
+        return AddressBook()
 
 
-def save_phonebook(phonebook: List[Dict[str, str]], filename=PHONEBOOK_FILE) -> None:
+def save_phonebook(phonebook: AddressBook, filename=PHONEBOOK_FILE) -> None:
     """Function to save the phonebook to the file.
 
     __args__:
-        phonebook: dict
-            The phonebook dictionary
+        phonebook: AddressBook object
+        filename: str
+            The path to the file to save the phonebook. Default is PHONEBOOK_FILE.
     __return__:
         None
     """
@@ -43,13 +43,14 @@ def save_phonebook(phonebook: List[Dict[str, str]], filename=PHONEBOOK_FILE) -> 
 def input_error(func):
     """
     Decorator to handle input errors in the bot. Handles the input error and prints the error message.
-    :errors:
+    __errors__:
         - KeyError:
         - ValueError:
         - IndexError:
-    :return: str
+    __return__: str
         The error message
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -57,30 +58,38 @@ def input_error(func):
         except KeyError as e:
             return str(e)
         except ValueError as e:
-            print(e)
+            return str(e)
         except IndexError as e:
             return "Invalid command.\nAvailable commands:\nhello, add, change, delete, search, show, close, exit"
+
     return wrapper
 
 
 @input_error
-def add_contact(name: str, phone: str, phonebook: List[Dict[str, str]]) -> None:
+def add_contact(
+        name: str,
+        phonebook: AddressBook,
+        phones: list = None,
+        birthday: str = None
+) -> None:
     """Function to add a contact to the phonebook.
 
     __args__:
         name: str
             The name of the contact
-        phone: str
-            The phone number of the contact
-        phonebook: dict
+        phonebook: AddressBook object
             The phonebook dictionary
+        phone: str
+            The phone number of the contact. Not required.
+        birthday: str
+            The birthday of the contact. Not required.
     __return__:
         None
     """
-    phone = normalize_phone(phone)
-    contact = {"name": name, "phone": phone}
-    phonebook.append(contact)
-    print(f"Contact {name} added.")
+    if name in phonebook:
+        raise ValueError(f"Contact {name} already exists.")
+    record = Record(name, phones, birthday)
+    phonebook.add_record(record)
 
 
 @input_error
@@ -165,6 +174,21 @@ def show_phonebook(phonebook: List[Dict[str, str]], sorted_=True) -> None:
         phonebook = sorted(phonebook, key=lambda contact: contact["name"])
     for contact in phonebook:
         print(f"{contact['name']}: {contact['phone']}")
+
+
+@input_error
+def add_birthday(args, book):
+    pass
+
+
+@input_error
+def show_birthday(args, book):
+    pass
+
+
+@input_error
+def birthdays(args, book):
+    pass
 
 
 def main(phonebook=None):
