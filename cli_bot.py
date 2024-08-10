@@ -69,7 +69,7 @@ def input_error(func):
 def add_contact(
         name: str,
         phonebook: AddressBook,
-        phones: list = None,
+        phone: str = None,
         birthday: str = None
 ) -> None:
     """Function to add a contact to the phonebook.
@@ -86,14 +86,25 @@ def add_contact(
     __return__:
         None
     """
-    if name in phonebook:
-        raise ValueError(f"Contact {name} already exists.")
-    record = Record(name, phones, birthday)
-    phonebook.add_record(record)
+    record = phonebook.find(name)
+    if record:
+        # add phone to existing record
+        record.add_phone(phone)
+        if birthday:
+            record.add_birthday(birthday)
+        print(f"Phone number {phone} added to contact {name}")
+    else:
+        # create new record
+        record = Record(name)
+        record.add_phone(phone)
+        if birthday:
+            record.add_birthday(birthday)
+        phonebook.add_record(record)
+        print(f"Contact {name} added with phone number {phone}")
 
 
 @input_error
-def change_contact(name: str, new_phone: str, phonebook: List[Dict[str, str]]) -> None:
+def change_contact(name: str, new_phone: str, phonebook: AddressBook) -> None:
     """Function to change the phone number of a contact.
 
     __args__:
@@ -106,19 +117,17 @@ def change_contact(name: str, new_phone: str, phonebook: List[Dict[str, str]]) -
     __return__:
         None
     """
-    if not any(contact["name"].lower() == name.lower() for contact in phonebook):
+    record = phonebook.get(name)
+    if not record:
         raise ValueError(f"Contact {name} not found.")
 
     new_phone = normalize_phone(new_phone)
-    for contact in phonebook:
-        if contact["name"].lower() == name.lower():
-            contact["phone"] = new_phone
-            break
+    record.edit_phone(record.phones[0].value, new_phone)
     print(f"Contact {name} updated.\nNew phone: {new_phone}")
 
 
 @input_error
-def delete_contact(name: str, phonebook: List[Dict[str, str]]) -> None:
+def delete_contact(name: str, phonebook: AddressBook) -> None:
     """Function to delete a contact from the phonebook.
 
     __args__:
@@ -129,16 +138,14 @@ def delete_contact(name: str, phonebook: List[Dict[str, str]]) -> None:
     __return__:
         None
     """
-    if not any(contact["name"].lower() == name.lower() for contact in phonebook):
+    if not phonebook.find(name):
         raise ValueError(f"Contact {name} not found.")
-    for contact in phonebook:
-        if contact["name"].lower() == name.lower():
-            phonebook.remove(contact)
-            print(f"Contact {name} deleted.")
-            break
+    phonebook.delete_record(name)
+    print(f"Contact {name} deleted.")
 
 
-def search_contact(pattern: str, phonebook: List[Dict[str, str]]) -> None:
+@input_error
+def search_contact(pattern: str, phonebook: AddressBook) -> None:
     """Function to search for a contact in the phonebook.
 
     __args__:
@@ -152,95 +159,135 @@ def search_contact(pattern: str, phonebook: List[Dict[str, str]]) -> None:
 
     found = False
 
-    for contact in phonebook:
-        if pattern.lower() in contact["name"].lower() or pattern in contact["phone"]:
-            print(f"{contact['name']}: {contact['phone']}")
+    for name, record in phonebook.items():
+        if pattern.lower() in name.lower() or any(pattern.lower() in phone.value.lower() for phone in record.phones):
+            print(f"{name}: {'; '.join(phone.value for phone in record.phones)}")
             found = True
 
     if not found:
         raise ValueError(f"Contact {pattern} not found.")
 
 
-def show_phonebook(phonebook: List[Dict[str, str]], sorted_=True) -> None:
+@input_error
+def show_phonebook(phonebook: AddressBook, sorted_=True) -> None:
     """Function to pint the phonebook to console.
 
     __args__:
         phonebook: dict
             The phonebook dictionary
+        sorted_: bool
+            Flag to sort the phonebook by name. Default is True.
     __return__:
         None
     """
+    records = list(phonebook.values())
     if sorted_:  # Sort the phonebook by name
-        phonebook = sorted(phonebook, key=lambda contact: contact["name"])
-    for contact in phonebook:
-        print(f"{contact['name']}: {contact['phone']}")
+        records.sort(key=lambda x: x.name.value)
+    for contact in records:
+        print(contact)
 
 
 @input_error
-def add_birthday(args, book):
-    pass
+def add_birthday(name: str, birthday: str, phonebook: AddressBook) -> None:
+    """Function to add a birthday to a contact.
+
+    __args__:
+        name: str
+            The name of the contact
+        birthday: str
+            The birthday to add
+        phonebook: AddressBook
+            The phonebook object
+    __return__:
+        None
+    """
+    record = phonebook.find(name)
+    if not record:
+        raise ValueError(f"Contact {name} not found.")
+
+    record.add_birthday(birthday)
+    print(f"Birthday for contact {name} added: {birthday}")
 
 
 @input_error
-def show_birthday(args, book):
-    pass
+def show_birthday(name: str, phonebook: AddressBook) -> None:
+    """Function to show the birthday of a contact.
+
+    __args__:
+        name: str
+            The name of the contact
+        phonebook: AddressBook
+            The phonebook object
+    __return__:
+            None
+    """
+    record = phonebook.find(name)
+    if not record:
+        raise ValueError(f"Contact {name} not found.")
+
+    if record.birthday:
+        print(f"Birthday for contact {name}: {record.birthday.value.strftime('%A, %B %d')}")
+    else:
+        print(f"No birthday found for contact {name}")
 
 
 @input_error
-def birthdays(args, book):
-    pass
+def birthdays(phonebook: AddressBook) -> None:
+    """Function to show contacts to congratulate in the next week.
+
+    __args__:
+        phonebook: AddressBook
+            The phonebook object
+    __return__:
+        None
+    """
+    upcoming_birthdays = phonebook.get_upcoming_birthdays()
+    if not upcoming_birthdays:
+        print("No upcoming birthdays in the next week.")
+
+    print("Upcoming birthdays in the next week:")
+    for name, birthday, congrats_day in upcoming_birthdays:
+        print(f"{name} on {birthday.strftime('%A, %B %d')} (congratulate on {congrats_day.strftime('%A, %B %d')})")
 
 
 def main(phonebook=None):
     print("Welcome to the assistant bot!")
 
     if phonebook is None:  # Load the phonebook if not provided
-        phonebook = []
+        phonebook = load_phonebook()
+
+    commands = {
+        "hello": lambda _: print("How can I help you?"),
+        "add": lambda args: add_contact(args[0], phonebook, phone=args[1]),
+        "change": lambda args: change_contact(args[0], args[1], phonebook),
+        "delete": lambda args: delete_contact(args[0], phonebook),
+        "search": lambda args: search_contact(args[0], phonebook),
+        "show": lambda args: show_phonebook(phonebook, sorted_=False),
+        "all": lambda args: show_phonebook(phonebook, sorted_=False),
+        "close": lambda _: print("Good bye!"),
+        "exit": lambda _: print("Good bye!"),
+        "phone": lambda args: search_contact(args[0], phonebook),
+        "add-birthday": lambda args: add_birthday(args[0], args[1], phonebook),
+        "show-birthday": lambda args: show_birthday(args[0], phonebook),
+        "birthdays": lambda _: birthdays(phonebook)
+        }
 
     while True:
         command = input("command: ").strip().split()
-        command[0] = command[0].lower()
+        cmd = command[0].lower()
+        args = command[1:]
 
-        if command[0] in ["close", "exit"]:
-            print("Good bye!")
-            break
-        elif command[0] == "hello":
-            print("How can I help you?")
-        elif command[0] == "add":
-            if len(command) != 3:
-                print("Invalid command.")
-                print("Usage: add <name> <phone>")
-                continue
-            add_contact(command[1], command[2], phonebook)
-        elif command[0] == "change":
-            if len(command) != 3:
-                print("Invalid command.")
-                print("Usage: change <name> <phone>")
-                continue
-            change_contact(command[1], command[2], phonebook)
-        elif command[0] == "delete":
-            if len(command) != 2:
-                print("Invalid command.")
-                print("Usage: delete <name>")
-                continue
-            delete_contact(command[1], phonebook)
-        elif command[0] == "search":
-            if len(command) != 2:
-                print("Invalid command.")
-                print("Usage: search <pattern>")
-                continue
-            search_contact(command[1], phonebook)
-        elif command[0] in ["show", "all"]:
-            if len(command) == 1 or (len(command) == 2 and command[1] == "all"):
-                show_phonebook(phonebook)
-            elif len(command) == 2:
-                search_contact(command[1], phonebook)
-            else:
-                print("Invalid command.")
-                print("Usage: show [pattern]")
+        if cmd in commands:
+            try:
+                commands[cmd](args)
+            except Exception as e:
+                print("[ERROR]", e)
         else:
             print("Invalid command.")
-            print("Available commands: hello, add, change, delete, search, show, close, exit")
+            print("Available commands: hello, add, change, delete, search, show, phone, add-birthday, show-birthday, "
+                  "birthdays, close, exit")
+        # finally:
+        #     save_phonebook(phonebook)
 
 
 if __name__ == '__main__':
