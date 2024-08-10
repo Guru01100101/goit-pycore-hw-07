@@ -277,7 +277,10 @@ def main(phonebook=None):
         cmd = command[0].lower()
         args = command[1:]
 
-        if cmd in commands:
+        if cmd in ["close", "exit"]:
+            commands[cmd](args)
+            break
+        elif cmd in commands:
             try:
                 commands[cmd](args)
             except Exception as e:
@@ -291,6 +294,6 @@ def main(phonebook=None):
 
 
 if __name__ == '__main__':
-    phonebook = load_phonebook()
-    main(phonebook=phonebook)
-    save_phonebook(phonebook)
+    # phonebook = load_phonebook()
+    main()
+    # save_phonebook(phonebook)
